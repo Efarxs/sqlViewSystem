@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>初始页面</title>
+</head>
+<body>
+<h1 th:text="'很随意的初始页面，不要在意这些细节（在意也没有用）'"></h1>
+<div>
+  <button id="linkStart" style="font-size: 18px">数据库，启动！</button>
+</div>
+<div id="contentContainer"></div>
+</body>
+<script src="/js/jquery/jquery-3.6.4.min.js"></script>
+<script>
+  $(document).ready(function() {
+    $("#linkStart").click(function() {
+      $.ajax({
+        url: "/startDatabase",
+        method: "POST",
+        success: function(response) {
+          if(response === "success") {
+            let successHTML = '<table><tr><td>&nbsp;&nbsp;&nbsp;</td></tr><tr style="font-size: 18px"><td>启动成功！</td></tr>'
+                    + '<tr><td>&nbsp;&nbsp;&nbsp;</td></tr>'
+                    + '<tr><td><select style="font-size: 18px" id="selectIntoMode">'
+                    + '<option value="databaseMode">模拟数据库</option>'
+                    //+ '<option value="businessMode">模拟业务</option>'
+                    + '</select></td></tr><tr><td>&nbsp;&nbsp;&nbsp;</td></tr>'
+                    + '<tr><td><div><button onclick="intoFunction()" style="font-size: 18px">进入选择模拟</button></div></td></tr>'
+                    + '</table>';
+            $("#contentContainer").html(successHTML);
+          } else {
+            $("#contentContainer").text("启动失败");
+          }
+        }
+      });
+    });
+  });
+
+  function intoFunction(){
+    let mode = $('#selectIntoMode').val();
+    window.location.href = "/"+mode;
+  }
+</script>
+</html>

@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>模拟数据库</title>
+    <style>
+        #getAllTable {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        #getAllTable table {
+            width: 80%;
+            border-collapse: collapse;
+            border: 2px solid #aaa;
+        }
+
+        #getAllTable td,
+        #getAllTable thead th,
+        #getAllTable tbody {
+            font-size: 18px;
+            text-align: center;
+            vertical-align: middle;
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+        }
+
+        #getAllTable button {
+            font-size: 18px;
+        }
+    </style>
+
+    <link href="/css/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="/css/bootstrap/toastr.min.css" rel="stylesheet">
+    <script src="/js/jquery/jquery-3.6.4.min.js"></script>
+    <script src="/js/popper/umd/popper.min.js"></script>
+    <script src="/js/bootstrap/bootstrap.min.js"></script>
+    <script src="/js/bootstrap/toastr.min.js"></script>
+</head>
+<body>
+<div id="getAllTable"></div>
+<div class="modal fade" id="createTableModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">创建新表</h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label>数据库表名:</label>
+                <input type="text" id="tableName" class="form-control">
+
+                <h5>字段:</h5>
+                <table class="table" id="fieldsTable">
+                    <thead>
+                    <tr>
+                        <th>字段名</th>
+                        <th>字段类型</th>
+                        <th>字段约束</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td><input type="text" class="form-control"></td>
+                        <td><input type="text" class="form-control"></td>
+                        <td><input type="text" class="form-control"></td>
+                        <td><button class="btn btn-danger btn-sm" onclick="removeRow(this)">删除</button></td>
+                    </tr>
+                    </tbody>
+                </table>
+                <button class="btn btn-info" onclick="addRow()">添加行</button>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" onclick="submitTable()">提交</button>
+                <button type="button" class="btn btn-danger" data-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="attributesModal" tabindex="-1" role="dialog" aria-labelledby="attributesModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="attributesModalLabel">表属性</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="attributesModalBody">
+                <!-- Attributes will be populated here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="addAttr" tabindex="-1" role="dialog" aria-labelledby="addAttrLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addAttrLabel">添加字段</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="addAttrBody">
+                <div>
+                    <form id="addAttrForm" method="post" action="#">
+                        <div class="form-group">
+                            <label for="addAttrName">字段名:</label>
+                            <input type="text" class="form-control" id="addAttrName" value="" placeholder="请输入字段名">
+                        </div>
+                        <div class="form-group">
+                            <label for="addAttrType">字段类型:</label>
+                            <input type="text" class="form-control" id="addAttrType" value="" placeholder="请输入字段类型">
+                        </div>
+                        <div class="form-group">
+                            <label for="addAttrConstraint">字段约束:</label>
+                            <input type="text" class="form-control" id="addAttrConstraint" value="" placeholder="请输入字段约束">
+                        </div>
+                    </form>
+                    <button type="button" onclick="addAttr()" class="btn btn-primary">提交</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editAttr" tabindex="-1" role="dialog" aria-labelledby="editAttrLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editAttrLabel">编辑字段</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="editAttrBody">
+                <form id="editAttrForm" method="post" action="#">
+                    <input type="hidden" id="editOldAttrName" value="" />
+                    <div class="form-group">
+                        <label for="editAttrName">字段名:</label>
+                        <input type="text" class="form-control" id="editAttrName" value="" placeholder="请输入字段名">
+                    </div>
+                    <div class="form-group">
+                        <label for="editAttrType">字段类型:</label>
+                        <input type="text" class="form-control" id="editAttrType" value="" placeholder="请输入字段类型">
+                    </div>
+                    <div class="form-group">
+                        <label for="editAttrConstraint">字段约束:</label>
+                        <input type="text" class="form-control" id="editAttrConstraint" value="" placeholder="请输入字段约束">
+                    </div>
+                </form>
+                <button type="button" onclick="editAttr()" class="btn btn-primary">提交</button>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" tabindex="-1" id="checkSqlModal" role="dialog" aria-labelledby="checkSqlModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="checkSqlModalLabel">检测成功</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>SQL语句合法，是否继续执行？</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="doExecuteSql()">执行</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+<script>
+    let operateTableName = null;
+    $(document).ready(function() {
+        $.ajax({
+            url: "/getAllTable",
+            method: "POST",
+            success: function(res) {
+                if (Array.isArray(res)) {
+                    let successHTML = '<table>';
+                    if(res.length === 0) {
+                        successHTML += '<tr><td>数据库中无表！</td></tr>';
+                        successHTML += '<tr><td><button onclick="createTable()">创建表</td></tr>';
+                    }else {
+                        successHTML += '<thead><tr><th>表名</th><th>操作</th></tr></thead><tbody>';
+                        for (let i = 0; i < res.length; i++) {
+                            if(res[i]==="sqlite_sequence") continue;//如果是序列就跳过
+                            successHTML += '<tr>';
+                            successHTML += '<td>' + res[i] + '</td>';  // 表名
+                            successHTML += '<td>';
+                            successHTML += '<button onclick="showAttributes(\'' + res[i] + '\')">属性</button>'; // 属性按钮
+                            successHTML += '<button onclick="deleteTable(\'' + res[i] + '\')">删除</button>';     // 删除按钮
+                            successHTML += '<button onclick="viewData(\'' + res[i] + '\')">数据</button>';       // 数据按钮
+                            successHTML += '</td>';
+                            successHTML += '</tr>';
+                        }
+                        successHTML += '<tr><td colspan="2"><button onclick="createTable()">创建表</button>&nbsp;&nbsp;';
+                        successHTML += '<button onclick="toMySearch()">自定义查询</button></td></tr>';
+                        // 添加SQL输入行
+                        successHTML += '<tr>';
+                        successHTML += '<td style="width:80%"><input type="text" class="form-control" id="customSQL" placeholder="输入SQL"></td>';
+                        successHTML += '<td style="width:20%"><button onclick="executeSQL()">运行sql（限 增删改）</button></td></tr></tbody>';
+                    }
+                    successHTML += '</table>';
+                    $("#getAllTable").html(successHTML);
+                } else {
+                    $("#getAllTable").text("加载出错");
+                }
+            }
+        });
+    });
+
+    function createTable() {
+        $('#createTableModal').modal('show');
+    }
+
+    function addRow() {
+        let row = `
+        <tr>
+            <td><input type="text" class="form-control"></td>
+            <td><input type="text" class="form-control"></td>
+            <td><input type="text" class="form-control"></td>
+            <td><button class="btn btn-danger btn-sm" onclick="removeRow(this)">删除</button></td>
+        </tr>
+    `;
+        $('#fieldsTable tbody').append(row);
+    }
+
+    function removeRow(button) {
+        if ($('#fieldsTable tbody tr').length > 1) {
+            $(button).closest('tr').remove();
+        } else {
+            toastr.warning("至少需要留下一行！");
+        }
+    }
+
+    function submitTable() {
+        let tableName = $('#tableName').val();
+        if (!tableName) {
+            alert("表名不能为空!");
+            return;
+        }
+
+        let fields = [];
+        $('#fieldsTable tbody tr').each(function() {
+            let fieldName = $(this).find('td').eq(0).find('input').val();
+            let fieldType = $(this).find('td').eq(1).find('input').val();
+            let fieldConstraint = $(this).find('td').eq(2).find('input').val();
+
+            fields.push({
+                name: fieldName,
+                type: fieldType,
+                constraint: fieldConstraint
+            });
+        });
+
+        $.ajax({
+            url: "/createTable",
+            method: "POST",
+            contentType: "application/json",
+            data: JSON.stringify({
+                tableName: tableName,
+                fields: fields
+            }),
+            success: function(response) {
+                if (response === "success") {
+                    toastr.success("表创建成功！");
+                } else {
+                    toastr.error("创建表失败，原因: " + response);
+                }
+            }
+        });
+
+        $('#createTableModal').modal('hide');
+        setTimeout(() => location.reload(), 1500);
+    }
+
+    /**
+     * 添加字段Modal
+     */
+    function addAttrShow(tableName) {
+        operateTableName = tableName;
+        $("#addAttr").modal('show');
+    }
+
+    /**
+     * 添加字段
+     */
+    function addAttr() {
+       let attrName = $("#addAttrName").val();
+       let attrType = $("#addAttrType").val();
+       let attrConstraint = $("#addAttrConstraint").val();
+        $.post("/addAttr", {
+            name: attrName,
+            type: attrType,
+            constraint: attrConstraint,
+            table: operateTableName,
+        }, function (data) {
+            if (data.success) {
+                // 添加成功
+                toastr.success("添加成功");
+                $("#addAttr").modal('hide');
+                showAttributes('student');
+            } else {
+                toastr.error(data.message);
+            }
+        }).fail(function () {
+            toastr.error("请求失败，请稍后重试！");
+        });
+    }
+
+    /**
+     * 编辑字段Modal
+     */
+    function editAttrShow(name,type,constraint,tableName) {
+        operateTableName = tableName;
+        $("#editOldAttrName").val(name);
+        $("#editAttrName").val(name);
+        $("#editAttrType").val(type);
+        $("#editAttrConstraint").val(constraint);
+        $("#editAttr").modal('show');
+    }
+    
+    function editAttr() {
+        let oldAttrName = $("#editOldAttrName").val();
+        let attrName = $("#editAttrName").val();
+        let attrType = $("#editAttrType").val();
+        let attrConstraint = $("#editAttrConstraint").val();
+
+        $.post("/editAttr", {
+            old: oldAttrName,
+            name: attrName,
+            type: attrType,
+            constraint: attrConstraint,
+            table: operateTableName,
+        }, function (data) {
+            if (data.success) {
+                // 修改成功
+                toastr.success("修改成功");
+                $("#editAttr").modal('hide');
+                showAttributes('student');
+            } else {
+                toastr.error(data.message);
+            }
+        }).fail(function () {
+            toastr.error("请求失败，请稍后重试！");
+        });
+    }
+
+    /**
+     * 删除字段
+     */
+    function deleteAttr(attrName, tableName) {
+        $.post("/deleteAttr", {
+            name: attrName,
+            table: tableName,
+        }, function (data) {
+            if (data.success) {
+                // 删除成功
+                toastr.success("删除成功");
+                showAttributes('student');
+            } else {
+                toastr.error(data.message);
+            }
+        }).fail(function () {
+            toastr.error("请求失败，请稍后重试！");
+        });
+    }
+
+
+
+    function showAttributes(tableName) {
+        $.ajax({
+            url: "/getTableAttributes",
+            method: "POST",
+            data: { tableName: tableName },
+            success: function(response) {
+                // 这里假设后端返回的response是一个包含字段信息的数组
+                let tableHTML = '<h4>' + tableName + '</h4>&nbsp;<button onclick="addAttrShow(\'' + tableName + '\')">添加字段</button> <table class="table">';
+                tableHTML += '<thead><tr><th>字段名</th><th>字段类型</th><th>字段约束</th><th>操作</th></tr></thead><tbody>';
+                response.forEach(attr => {
+                    tableHTML += '<tr><td>' + attr.name + '</td><td>' + attr.type + '</td><td>' + attr.constraint + '</td>' +
+                        `<td><button onclick="deleteAttr('${attr.name}','${tableName}')">删除</button>&nbsp;&nbsp;<button onclick="editAttrShow('${attr.name}','${attr.type}','${attr.constraint}','${tableName}')">修改</button></td></tr>`;
+                });
+                tableHTML += '</tbody></table>';
+                $("#attributesModalBody").html(tableHTML);
+                $("#attributesModal").modal('show');
+            }
+        });
+    }
+
+    function deleteTable(tableName) {
+        let confirmation = confirm(`您确定要删除${tableName}这张表吗？该操作不可逆。`);
+        if (confirmation) {
+            $.ajax({
+                url: "/deleteTable",
+                method: "POST",
+                data: { tableName: tableName },
+                success: function(response) {
+                    if (response.success) {
+                        toastr.success("表已删除");
+                        location.reload(); // 刷新页面来更新表列表
+                    } else {
+                        toastr.error("删除失败: " + response.message);
+                    }
+                }
+            });
+        }
+    }
+
+    function viewData(tableName) {
+        window.location.href = "/viewData/"+tableName;
+    }
+
+    function doExecuteSql() {
+        let sql = $("#customSQL").val();
+        let regex = /^(SELECT|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER)\s+/i;
+        if (!regex.test(sql)) {
+            toastr.error("请提交有效的SQL语句");
+            return;
+        }
+        $.ajax({
+            url: "/doExecuteSQL",
+            method: "POST",
+            data: { sql: sql },
+            success: function(res) {
+                if (res.isSuccess) {
+                    toastr.success("执行成功");
+                } else {
+                    toastr.error("SQL语句不合法: " + res.message);
+                }
+            }
+        });
+    }
+
+    function executeSQL(){
+        let sql = $("#customSQL").val();
+        let regex = /^(SELECT|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER)\s+/i;
+        if (!regex.test(sql)) {
+            toastr.error("请提交有效的SQL语句");
+            return;
+        }
+        $.ajax({
+            url: "/executeSQL",
+            method: "POST",
+            data: { sql: sql },
+            success: function(res) {
+                if (res.isSuccess) {
+                    // 语句合法
+                    $("#checkSqlModal").modal("show");
+                } else {
+                    toastr.error("SQL语句不合法: " + res.message);
+                }
+            }
+        });
+    }
+
+    function toMySearch(){
+        window.location.href = "/toMySearch";
+    }
+</script>
+</html>

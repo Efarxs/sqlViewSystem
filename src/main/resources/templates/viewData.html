@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>查看表数据</title>
+    <style>
+        #tableInfo {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #tableInfo table {
+            width: 90%;
+            border-collapse: collapse;
+            border: 2px solid #aaa;
+        }
+
+        #tableInfo td,
+        #tableInfo thead th,
+        #tableInfo tbody {
+            font-size: 18px;
+            text-align: center;
+            vertical-align: middle;
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+        }
+
+        #tableInfo button {
+            font-size: 18px;
+        }
+
+        .title-row {
+            height: 50px; /* 你可以根据需要调整这个值 */
+        }
+
+        .title-row h4 {
+            margin: 0; /* 移除标题的外边距 */
+        }
+    </style>
+    <link href="/css/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="/css/bootstrap/toastr.min.css" rel="stylesheet">
+    <script src="/js/jquery/jquery-3.6.4.min.js"></script>
+    <script src="/js/popper/umd/popper.min.js"></script>
+    <script src="/js/bootstrap/bootstrap.min.js"></script>
+    <script src="/js/bootstrap/toastr.min.js"></script>
+</head>
+<body>
+<div class="container">
+    <div id="tableInfo"></div>
+    <nav id="pagination" aria-label="Page navigation">
+        <ul id="paginationList" class="pagination justify-content-center">
+
+        </ul>
+    </nav>
+</div>
+
+<input id="tableName" type="hidden" th:value="${tableName}"/>
+
+<div class="modal fade" id="addColumn" tabindex="-1" role="dialog" aria-labelledby="addColumnLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addColumnLabel">添加数据</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="addColumnBody">
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editColumn" tabindex="-1" role="dialog" aria-labelledby="editColumnLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editColumnLabel">编辑数据</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="editColumnBody">
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+<script>
+    let columnArr = [];
+    // 分页大小
+    let pageSize = 10;
+    /**
+     * 添加视图
+     */
+    function addColumnShow() {
+        $("#addColumnBody").innerHTML = "";
+        let addColumnBodyHTML = "<div><form id='addForm' action='#' method='post'>";
+        columnArr.forEach(item => {
+            addColumnBodyHTML += `<div class="form-group">
+        <label for="column-${item}">${item}:</label>
+        <input type="text" class="form-control" name="${item}" id="column-${item}" placeholder="请输入对应的${item}的值">
+      </div>`
+        })
+        addColumnBodyHTML += "</form><button type=\"button\" onclick='addColumn()' class=\"btn btn-primary\">确认添加</button></div>";
+
+        $("#addColumnBody").html(addColumnBodyHTML);
+        $("#addColumn").modal('show');
+    }
+
+    /**
+     * 添加
+     */
+    function addColumn() {
+        // 将表单的数据封装成JSON 每一个input就是一个JSON
+        let formData = $('#addForm').serializeArray();
+
+        let jsonData = {};
+        // 重组JSON数据
+        $.each(formData, function() {
+            if (jsonData[this.name]) {
+                if (!jsonData[this.name].push) {
+                    jsonData[this.name] = [jsonData[this.name]];
+                }
+                jsonData[this.name].push(this.value || '');
+            } else {
+                jsonData[this.name] = this.value || '';
+            }
+        });
+
+        let jsonResult = JSON.stringify(jsonData);
+
+        $.post("/addColumn", {
+            data: jsonResult,
+            table: $("#tableName").val(),
+        }, function (data) {
+            if (data.success) {
+                // 添加成功
+                toastr.success("添加成功");
+                $("#addColumn").modal('hide');
+                // 刷新数据
+                init();
+            } else {
+                toastr.error(data.message);
+            }
+        }).fail(function () {
+            toastr.error("请求失败，请稍后重试！");
+        });
+    }
+    
+    /**
+     * 删除
+     */
+    function deleteColumn(trId) {
+        // 删除数据请求
+        $.post("/deleteColumnByRowId", {
+            data: trId,
+            table: $("#tableName").val(),
+        }, function (data) {
+            if (data.success) {
+                // 删除成功
+                toastr.success("删除成功");
+                // 刷新数据
+                init();
+            } else {
+                toastr.error(data.message);
+            }
+        }).fail(function () {
+            toastr.error("请求失败，请稍后重试！");
+        });
+
+        /*// 删除数据请求
+        $.post("/deleteColumn", {
+            data: JSON.stringify(resData),
+            table: $("#tableName").val(),
+        }, function (data) {
+            if (data.success) {
+                // 删除成功
+                toastr.success("删除成功");
+                // 刷新数据
+                init();
+            } else {
+                toastr.error(data.message);
+            }
+        }).fail(function () {
+            toastr.error("请求失败，请稍后重试！");
+        });*/
+    }
+
+    /**
+     * 修改数据
+     */
+    function editColumn() {
+        let formData = $('#editForm').serializeArray();
+
+        let jsonData = {};
+        // 重组JSON数据
+        $.each(formData, function() {
+            if (jsonData[this.name]) {
+                if (!jsonData[this.name].push) {
+                    jsonData[this.name] = [jsonData[this.name]];
+                }
+                jsonData[this.name].push(this.value || '');
+            } else {
+                jsonData[this.name] = this.value || '';
+            }
+        });
+
+        let jsonResult = JSON.stringify(jsonData);
+
+        $.post("/editColumn", {
+            data: jsonResult,
+            table: $("#tableName").val(),
+        }, function (data) {
+            if (data.success) {
+                // 添加成功
+                toastr.success("修改成功");
+                $("#editColumn").modal('hide');
+                // 刷新数据
+                init();
+            } else {
+                toastr.error(data.message);
+            }
+        }).fail(function () {
+            toastr.error("请求失败，请稍后重试！");
+        });
+    }
+
+    /**
+     * 修改数据 页面
+     * @param trId
+     */
+    function editColumnShow(index, trId) {
+        let tr = $("#data-" + index);
+        // 组装数据
+        let resData = {};
+        let children = tr.children("td");
+        for(let i = 0; i < children.length - 1; i++ ){
+            resData[columnArr[i]] = children.get(i).innerHTML;
+        }
+
+        $("#editColumnBody").innerHTML = "";
+        let editColumnBodyHTML = "<div><form id='editForm' action='#' method='post'><input type='hidden' name='rowid' value='" + trId +"'>";
+        columnArr.forEach(item => {
+            editColumnBodyHTML += `<div class="form-group">
+        <label for="column-${item}">${item}:</label>
+        <input type="text" class="form-control" name="${item}" value="${resData[item]}" id="column-${item}" placeholder="请输入对应的${item}的值">
+      </div>`
+        })
+        editColumnBodyHTML += "</form><button type=\"button\" onclick='editColumn()' class=\"btn btn-primary\">确认修改</button></div>";
+
+        $("#editColumnBody").html(editColumnBodyHTML);
+        $("#editColumn").modal('show');
+
+    }
+
+
+    function init() {
+        getDataList(1);
+    }
+
+    function getDataList(page) {
+        columnArr = [];
+        $("#tableInfo").html("");
+        $.ajax({
+            url: "/getTableInfo?size=" + pageSize + "&page=" + page,
+            method: "POST",
+            data: { tableName: $("#tableName").val()},
+            success: function(res) {
+                if (res.success) {
+                    // 分页操作
+                    let totalPages = Math.ceil(res.total / pageSize); // 计算总页数
+
+                    let tableHTML = "<table class='table'>";
+                    // 构建表头
+                    tableHTML += "<thead><tr class='title-row'><td colspan='"+(res.columns.length+1)+"'><h4>"+$("#tableName").val()+"表数据</h4>&nbsp;&nbsp;<button onclick='addColumnShow()'>添加数据</button></td></tr><tr>";
+                    res.columns.forEach(column => {
+                        if (column === "rowid") {
+                            return;
+                        }
+                        columnArr.push(column);
+                        tableHTML += `<th>${column}</th>`;
+                    });
+                    tableHTML += `<th>操作</th>`;
+                    tableHTML += "</tr></thead>";
+
+                    // 构建数据
+                    tableHTML += "<tbody>";
+                    let index = 1;
+                    res.data.forEach(row => {
+                        tableHTML += `<tr id="data-${index}">`;
+                        for (let i = 0; i < res.columns.length - 1; i++) {
+                            tableHTML += `<td>${row[res.columns[i]]}</td>`;
+                        }
+                        /*res.columns.forEach(column => {
+                            tableHTML += `<td>${row[column]}</td>`;
+                        });*/
+                        tableHTML += `<td><button onclick="deleteColumn(${row['rowid']})">删除</button>&nbsp;&nbsp;<button onclick="editColumnShow(${index++},${row['rowid']})">修改</button></td>`;
+                        tableHTML += "</tr>";
+                    });
+                    tableHTML += "</tbody>";
+                    tableHTML += "</table>";
+
+                    $("#tableInfo").html(tableHTML);
+
+                    // 生成分页组件
+                    let paginationList = $("#paginationList");
+                    paginationList.empty();
+                    for (let i = 1; i <= totalPages; i++) {
+                        let listItem = $("<li class='page-item'><a class='page-link' href='#'>" + i + "</a></li>");
+                        listItem.click(function() {
+                            // 处理点击页码事件
+                            let page = parseInt($(this).text());
+                            // 根据页码请求相应数据
+                            getDataList(page);
+                        });
+                        paginationList.append(listItem);
+                    }
+                } else {
+                    $("#tableInfo").html(`<p>Error: ${res.message}</p>`);
+                }
+            }
+        });
+    }
+    $(document).ready(function() {
+        init();
+    });
+</script>
+</html>
