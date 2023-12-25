@@ -1,7 +1,6 @@
 package org.example;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import org.example.controller.IndexController;
 import org.example.framework.DbStarter;
 import org.example.framework.Response;
 import org.example.pojo.Attr;
@@ -15,62 +14,54 @@ import static spark.Spark.*;
 
 public class Main {
 
+    /**
+     * 配置Thymeleaf模板引擎
+     * @return
+     */
     private static TemplateEngine thymeleafTemplateEngine() {
         ClassLoaderTemplateResolver templateResolver = new ClassLoaderTemplateResolver();
+        // 配置模板文件路径前缀
         templateResolver.setPrefix("templates/");
+        // 配置模板文件路径后缀 也就是文件格式
         templateResolver.setSuffix(".html");
+        // 上面的路径前缀后缀可以理解为拼接 如果我要渲染一个index.html 那么他的路径就是 路径前缀+文件名index+后缀
+        // 配置以HTML的方式渲染
         templateResolver.setTemplateMode("HTML");
-        templateResolver.setCacheable(false);//Thymeleaf不会缓存模板，每次请求时都会重新加载模板。但会增加I/O操作
+        //Thymeleaf不会缓存模板，每次请求时都会重新加载模板。但会增加I/O操作
+        templateResolver.setCacheable(false);
         TemplateEngine templateEngine = new TemplateEngine();
         templateEngine.setTemplateResolver(templateResolver);
         return templateEngine;
     }
 
     public static void main(String[] args) {
-        staticFiles.location("/fepackages"); // 如果文件在 `/src/main/resources/fepackages`
+        // 配置静态资源路径
+        // 如果文件在 `/src/main/resources/fepackages`
+        staticFiles.location("/fepackages");
         TemplateEngine templateEngine = thymeleafTemplateEngine();
+        // 配置端口
+        port(8080);
 
-
-        get("/index", (req, res) -> {
-            Context ctx = new Context();
-            return templateEngine.process("index", ctx);
-        });
-
+        /**
+         * 首页路由 默认是databaseMode
+         */
         get("/", (req,res) -> {
 
-            res.redirect("/index");
-            return null;
+            Context ctx = new Context();
+            return templateEngine.process("databaseMode", ctx);
         });
 
-//        get("/businessMode", (req, res) -> {
-//            Context ctx = new Context();
-//            return templateEngine.process("businessMode", ctx);
-//        });
-
+        /**
+         * 自定义查询sql页
+         */
         get("/toMySearch", (req, res) -> {
             Context ctx = new Context();
             return templateEngine.process("mySearch", ctx);
         });
 
-        get("/databaseMode", (req, res) -> {
-            Context ctx = new Context();
-            return templateEngine.process("databaseMode", ctx);
-        });
-
-//        get("/loginIndex", (req, res) -> {
-//            Context ctx = new Context();
-//            return templateEngine.process("loginIndex", ctx);
-//        });
-
-        post("/startDatabase", (req, res) -> {
-            try {
-                DbStarter.getConnection();
-                return "success";
-            } catch(Exception e) {
-                return "error";
-            }
-        });
-
+        /**
+         * 获取所有数据表接口
+         */
         post("/getAllTable", (req, res) -> {
             Connection conn = DbStarter.getConnection();
             List<String> tableNames = new ArrayList<>();
@@ -90,6 +81,9 @@ public class Main {
             return DbStarter.getObjectMapper().writeValueAsString(tableNames);
         });
 
+        /**
+         * 创建数据表接口
+         */
         post("/createTable", (req, res) -> {
             // 解析请求体为Map
             Map<String, Object> payload = DbStarter.getObjectMapper().readValue(req.body(), Map.class);
@@ -122,7 +116,9 @@ public class Main {
                 return "创建表失败: " + e.getMessage();
             }
         });
-
+        /**
+         * 获取数据表所有字段接口
+         */
         post("/getTableAttributes", (req, res) -> {
             String tableName = req.queryParams("tableName");
             Connection conn = DbStarter.getConnection();
@@ -145,6 +141,9 @@ public class Main {
             }
         });
 
+        /**
+         * 删除数据表接口
+         */
         post("/deleteTable", (req, res) -> {
             String tableName = req.queryParams("tableName");
             Connection conn = DbStarter.getConnection();
@@ -163,12 +162,18 @@ public class Main {
             }
         });
 
+        /**
+         * 数据表数据视图页
+         */
         get("/viewData/:tableName", (req, res) -> {
             Context ctx = new Context();
             ctx.setVariable("tableName", req.params(":tableName"));
             return thymeleafTemplateEngine().process("viewData", ctx);
         });
 
+        /**
+         * 获取数据表数据接口 含分页
+         */
         post("/getTableInfo", (req, res) -> {
             String tableName = req.queryParams("tableName");
             String size = req.queryParams("size");
@@ -213,7 +218,10 @@ public class Main {
             }
         });
 
-        post("/executeSQL", (req, res) -> {
+        /**
+         * 检测sql
+         */
+        post("/checkSQL", (req, res) -> {
             String sql = req.queryParams("sql");
             Connection conn = DbStarter.getConnection();
             Response response = new Response();
@@ -221,7 +229,6 @@ public class Main {
 
             // 为安全起见，避免执行查询语句
             if (sql.trim().toUpperCase().startsWith("SELECT")) {
-
                 response.setIsSucccess(false);
                 response.setMessage("此处无法查询");
                 return DbStarter.getObjectMapper().writeValueAsString(response);
@@ -251,8 +258,10 @@ public class Main {
             }
         });
 
-        // 真正执行
-        post("/doExecuteSQL", (req, res) -> {
+        /**
+         * 执行sql语句
+         */
+        post("/executeSQL", (req, res) -> {
             String sql = req.queryParams("sql");
             Connection conn = DbStarter.getConnection();
             Response response = new Response();
@@ -260,7 +269,6 @@ public class Main {
 
             // 为安全起见，避免执行查询语句
             if (sql.trim().toUpperCase().startsWith("SELECT")) {
-
                 response.setIsSucccess(false);
                 response.setMessage("此处无法查询");
                 return DbStarter.getObjectMapper().writeValueAsString(response);
@@ -284,6 +292,9 @@ public class Main {
             }
         });
 
+        /**
+         * 执行查询语句
+         */
         post("/executeSearchSQL", (request, response) -> {
             String sql = request.queryParams("sql");
             Map<String, Object> result = new HashMap<>();
@@ -293,10 +304,7 @@ public class Main {
                 response.type("application/json");
                 return DbStarter.getObjectMapper().writeValueAsString(result);
             }
-
             Connection conn = DbStarter.getConnection();
-
-
             try (Statement stmt = conn.createStatement();
                  ResultSet rs = stmt.executeQuery(sql)) {
 
@@ -418,47 +426,6 @@ public class Main {
         /**
          * 删除数据
          */
-        post("/deleteColumn", (req, resp) -> {
-            String table = req.queryParams("table");
-            String data = req.queryParams("data");
-
-            JsonNode jsonNode = DbStarter.getObjectMapper().readTree(data);
-            // 构建sql语句
-            StringBuilder sb = new StringBuilder("delete from " + table + " where 1=1");
-            List<Object> params = new ArrayList<>();
-            Iterator<String> stringIterator = jsonNode.fieldNames();
-            while (stringIterator.hasNext()) {
-                String key = stringIterator.next();
-                if ("null".equals(jsonNode.get(key).asText())) {
-                    // 为Null 跳过
-                    continue;
-                }
-                params.add(jsonNode.get(key).asText());
-                sb.append(" and ").append(key).append("=").append("?");
-            }
-            //System.out.println(sb);
-            Connection conn = DbStarter.getConnection();
-            Map<String,Object> result = new HashMap<>();
-            try (PreparedStatement pst = conn.prepareStatement(sb.toString())) {
-                for (int i = 0; i < params.size(); i++) {
-                    pst.setObject(i+1,params.get(i));
-                }
-
-                int i = pst.executeUpdate();
-                result.put("success", true);
-                result.put("message", "删除成功");
-            } catch (SQLException e) {
-                e.printStackTrace();
-                result.put("success", false);
-                result.put("message", "删除失败" + e.getMessage());
-            }
-            resp.type("application/json");
-            return DbStarter.getObjectMapper().writeValueAsString(result);
-        });
-
-        /**
-         * 删除数据
-         */
         post("/deleteColumnByRowId", (req, resp) -> {
             String table = req.queryParams("table");
             String data = req.queryParams("data");
@@ -493,7 +460,6 @@ public class Main {
 
             // alter table student
             //    add test1 integer;
-
             String sql = "alter table " + table + " add " + name + " " + type;
             if (constraint != null && !constraint.isEmpty()) {
                 sql += " " + constraint;
@@ -610,7 +576,7 @@ public class Main {
                 // drop table student;
                 conn.prepareStatement("drop table " + table).executeUpdate();
                 // 更改临时表的名字
-                // alter table student_dg_tmp
+                // alter table student_tmp
                 //    rename to student;
                 conn.prepareStatement("alter table " + table + "_tmp " + " rename to " + table).executeUpdate();
 
@@ -705,20 +671,6 @@ public class Main {
                 pst1.executeUpdate();
 
                 // 写入数据
-                // insert into student_dg_tmp(username, real_name, password, group_id, test, test1, test2, test3, test4, test5, test7)
-                //select username,
-                //       real_name,
-                //       password,
-                //       group_id,
-                //       test,
-                //       test1,
-                //       test2,
-                //       test3,
-                //       test4,
-                //       test5,
-                //       test6
-                //from student;
-
                 attrSb.deleteCharAt(attrSb.length() - 1);
                 oldAttrSb.deleteCharAt(oldAttrSb.length() - 1);
 
@@ -741,7 +693,7 @@ public class Main {
                 // drop table student;
                 conn.prepareStatement("drop table " + table).executeUpdate();
                 // 更改临时表的名字
-                // alter table student_dg_tmp
+                // alter table student_tmp
                 //    rename to student;
                 conn.prepareStatement("alter table " + table + "_tmp " + " rename to " + table).executeUpdate();
 
@@ -755,7 +707,5 @@ public class Main {
             resp.type("application/json");
             return DbStarter.getObjectMapper().writeValueAsString(result);
         });
-
-        IndexController.initIndexController();
     }
 }

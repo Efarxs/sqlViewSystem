@@ -100,7 +100,7 @@
     // 分页大小
     let pageSize = 10;
     /**
-     * 添加视图
+     * 添加数据视图modal
      */
     function addColumnShow() {
         $("#addColumnBody").innerHTML = "";
@@ -118,7 +118,7 @@
     }
 
     /**
-     * 添加
+     * 添加数据
      */
     function addColumn() {
         // 将表单的数据封装成JSON 每一个input就是一个JSON
@@ -158,7 +158,7 @@
     }
     
     /**
-     * 删除
+     * 删除数据
      */
     function deleteColumn(trId) {
         // 删除数据请求
@@ -177,23 +177,6 @@
         }).fail(function () {
             toastr.error("请求失败，请稍后重试！");
         });
-
-        /*// 删除数据请求
-        $.post("/deleteColumn", {
-            data: JSON.stringify(resData),
-            table: $("#tableName").val(),
-        }, function (data) {
-            if (data.success) {
-                // 删除成功
-                toastr.success("删除成功");
-                // 刷新数据
-                init();
-            } else {
-                toastr.error(data.message);
-            }
-        }).fail(function () {
-            toastr.error("请求失败，请稍后重试！");
-        });*/
     }
 
     /**
@@ -236,7 +219,7 @@
     }
 
     /**
-     * 修改数据 页面
+     * 修改数据modal
      * @param trId
      */
     function editColumnShow(index, trId) {
@@ -264,10 +247,17 @@
     }
 
 
+    /**
+     * 初始化，负责获取数据表数据
+     */
     function init() {
         getDataList(1);
     }
 
+    /**
+     * 获取数据表数据，并进行分页
+     * @param page
+     */
     function getDataList(page) {
         columnArr = [];
         $("#tableInfo").html("");
@@ -285,6 +275,7 @@
                     tableHTML += "<thead><tr class='title-row'><td colspan='"+(res.columns.length+1)+"'><h4>"+$("#tableName").val()+"表数据</h4>&nbsp;&nbsp;<button onclick='addColumnShow()'>添加数据</button></td></tr><tr>";
                     res.columns.forEach(column => {
                         if (column === "rowid") {
+                            // 不把rowid显示出来
                             return;
                         }
                         columnArr.push(column);
@@ -301,9 +292,6 @@
                         for (let i = 0; i < res.columns.length - 1; i++) {
                             tableHTML += `<td>${row[res.columns[i]]}</td>`;
                         }
-                        /*res.columns.forEach(column => {
-                            tableHTML += `<td>${row[column]}</td>`;
-                        });*/
                         tableHTML += `<td><button onclick="deleteColumn(${row['rowid']})">删除</button>&nbsp;&nbsp;<button onclick="editColumnShow(${index++},${row['rowid']})">修改</button></td>`;
                         tableHTML += "</tr>";
                     });
@@ -331,6 +319,10 @@
             }
         });
     }
+
+    /**
+     * 当页面加载完成后会执行
+     */
     $(document).ready(function() {
         init();
     });

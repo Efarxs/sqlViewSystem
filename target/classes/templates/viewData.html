@@ -46,7 +46,15 @@
     <script src="/js/bootstrap/toastr.min.js"></script>
 </head>
 <body>
-<div id="tableInfo"></div>
+<div class="container">
+    <div id="tableInfo"></div>
+    <nav id="pagination" aria-label="Page navigation">
+        <ul id="paginationList" class="pagination justify-content-center">
+
+        </ul>
+    </nav>
+</div>
+
 <input id="tableName" type="hidden" th:value="${tableName}"/>
 
 <div class="modal fade" id="addColumn" tabindex="-1" role="dialog" aria-labelledby="addColumnLabel" aria-hidden="true">
@@ -89,7 +97,8 @@
 </body>
 <script>
     let columnArr = [];
-
+    // 分页大小
+    let pageSize = 10;
     /**
      * 添加视图
      */
@@ -254,15 +263,23 @@
 
     }
 
+
     function init() {
+        getDataList(1);
+    }
+
+    function getDataList(page) {
         columnArr = [];
         $("#tableInfo").html("");
         $.ajax({
-            url: "/getTableInfo",
+            url: "/getTableInfo?size=" + pageSize + "&page=" + page,
             method: "POST",
             data: { tableName: $("#tableName").val()},
             success: function(res) {
                 if (res.success) {
+                    // 分页操作
+                    let totalPages = Math.ceil(res.total / pageSize); // 计算总页数
+
                     let tableHTML = "<table class='table'>";
                     // 构建表头
                     tableHTML += "<thead><tr class='title-row'><td colspan='"+(res.columns.length+1)+"'><h4>"+$("#tableName").val()+"表数据</h4>&nbsp;&nbsp;<button onclick='addColumnShow()'>添加数据</button></td></tr><tr>";
@@ -294,6 +311,20 @@
                     tableHTML += "</table>";
 
                     $("#tableInfo").html(tableHTML);
+
+                    // 生成分页组件
+                    let paginationList = $("#paginationList");
+                    paginationList.empty();
+                    for (let i = 1; i <= totalPages; i++) {
+                        let listItem = $("<li class='page-item'><a class='page-link' href='#'>" + i + "</a></li>");
+                        listItem.click(function() {
+                            // 处理点击页码事件
+                            let page = parseInt($(this).text());
+                            // 根据页码请求相应数据
+                            getDataList(page);
+                        });
+                        paginationList.append(listItem);
+                    }
                 } else {
                     $("#tableInfo").html(`<p>Error: ${res.message}</p>`);
                 }
